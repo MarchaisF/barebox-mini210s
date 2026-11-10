@@ -229,6 +229,7 @@ struct mtd_info {
 	struct cdev cdev;
 
 	struct cdev *cdev_bb;
+	bool no_auto_bb;
 
 	struct param_d param_size;
 	char *size_str;

@@ -182,6 +182,9 @@ static ssize_t mtdraw_write(struct cdev *cdev, const void *buf, size_t count,
 	size_t retlen = 0, tofill;
 	int ret = 0;
 
+	if (!(mtd->flags & MTD_WRITEABLE))
+		return -EROFS;
+
 	numpage = mtdraw_offset_to_page(mtdraw, offset);
 
 	if (mtdraw->write_fill &&
@@ -234,6 +237,9 @@ static int mtdraw_erase(struct cdev *cdev, loff_t count, loff_t offset)
 	struct erase_info erase;
 	int ret;
 
+	if (!(mtd->flags & MTD_WRITEABLE))
+		return -EROFS;
+
 	offset = mtdraw_raw_to_mtd_offset(mtdraw, offset);
 	count = mtdraw_raw_to_mtd_offset(mtdraw, count);
 
@@ -269,11 +275,11 @@ static int mtdraw_erase(struct cdev *cdev, loff_t count, loff_t offset)
 static ssize_t mtdraw_write(struct cdev *cdev, const void *buf, size_t count,
 			    loff_t offset, ulong flags)
 {
-	return 0;
+	return -EROFS;
 }
-static ssize_t mtdraw_erase(struct cdev *cdev, loff_t count, loff_t offset)
+static int mtdraw_erase(struct cdev *cdev, loff_t count, loff_t offset)
 {
-	return 0;
+	return -EROFS;
 }
 #endif
 

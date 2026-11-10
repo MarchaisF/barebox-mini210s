@@ -5,8 +5,29 @@
 #include <asm/system.h>
 #include <asm/opcodes-virt.h>
 
+#ifdef CONFIG_MACH_MINI210S
+.macro MINI210S_LED_ON bit
+	movw	r0, #0x0284
+	movt	r0, #0xE020
+	ldr	r1, [r0]
+	bic	r1, r1, #(1 << \bit)
+	str	r1, [r0]
+.endm
+
+.macro MINI210S_LED_OFF bit
+	movw	r0, #0x0284
+	movt	r0, #0xE020
+	ldr	r1, [r0]
+	orr	r1, r1, #(1 << \bit)
+	str	r1, [r0]
+.endm
+#endif
+
 .section ".text_bare_init_","ax"
 ENTRY(arm_cpu_lowlevel_init)
+#ifdef CONFIG_MACH_MINI210S
+	MINI210S_LED_ON 1
+#endif
 	/* save lr, since it may be banked away with a processor mode change */
 	mov	r2, lr
 	/* save sp, because possible HYP -> SVC transition below clobbers it */
@@ -14,7 +35,16 @@ ENTRY(arm_cpu_lowlevel_init)
 
 #ifdef CONFIG_CPU_32v7
 	/* careful: the hyp install corrupts r0 and r1 */
+#ifdef CONFIG_MACH_MINI210S
+	MINI210S_LED_ON 2
+#else
 	bl	__hyp_install
+#endif
+#endif
+#ifdef CONFIG_MACH_MINI210S
+	MINI210S_LED_OFF 3
+	MINI210S_LED_OFF 1
+	MINI210S_LED_ON 2
 #endif
 
 	/* set the cpu to SVC32 mode, mask irq and fiq */
@@ -32,6 +62,11 @@ THUMB(	orr	r12, r12, #PSR_T_BIT	)
 	__ERET
 1:	msr	cpsr_c, r12
 2:
+#ifdef CONFIG_MACH_MINI210S
+	MINI210S_LED_OFF 2
+	MINI210S_LED_OFF 1
+	MINI210S_LED_ON 3
+#endif
 
 #if __LINUX_ARM_ARCH__ >= 6
 	/*
@@ -78,6 +113,9 @@ THUMB(	orr	r12, r12, #PSR_T_BIT	)
 #endif
 
 	mcr	p15, 0, r12, c1, c0, 0		/* SCTLR */
+#ifdef CONFIG_MACH_MINI210S
+	MINI210S_LED_ON 1
+#endif
 
 	mov	sp, r3
 	mov	pc, r2

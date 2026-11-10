@@ -1,0 +1,23 @@
+hostname=mini210s
+user=
+ip=none
+
+kernel_loc=nand
+rootfs_loc=nand
+oftree_loc=
+kernelimage=zImage-mini210s
+rootfs_type=yaffs2
+rootfsimage=root-mini210s.yaffs2
+kernel_part=disk0.2
+rootfs_part_linux_dev=mmcblk0p4
+
+global.bootm.boot_atag=true
+bootargs="console=ttySAC0,115200 init=/linuxrc"
+autoboot_timeout=
+
+nand_device=s5pv210-nand
+nand_parts=
+rootfs_mtdblock_nand=4
+
+nor_parts=
+disk_parts=

@@ -1,0 +1,13 @@
+#!/bin/sh
+
+if [ -e /dev/nand0 ]; then
+	addpart /dev/nand0 "5M@0x600000(kernel)"
+	if [ $? != 0 ]; then
+		echo "Could not create the NAND kernel partition"
+	elif [ ! -e /dev/nand0.kernel.bb ]; then
+		nand -a /dev/nand0.kernel
+		if [ $? != 0 ]; then
+			echo "Could not create /dev/nand0.kernel.bb"
+		fi
+	fi
+fi

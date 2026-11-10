@@ -71,8 +71,12 @@ static int do_nand(int argc, char *argv[])
 
 	if (command == NAND_ADD) {
 		while (optind < argc) {
-			if (dev_add_bb_dev(basename(argv[optind]), NULL))
-				return 1;
+			ret = dev_add_bb_dev(basename(argv[optind]), NULL);
+			if (ret) {
+				printf("cannot create bad-block device for %s: %d\n",
+				       basename(argv[optind]), ret);
+				return ret;
+			}
 
 			optind++;
 		}
@@ -90,7 +94,7 @@ static int do_nand(int argc, char *argv[])
 		goto out_ret;
 	}
 
-	fd = open(argv[optind], O_RDWR);
+	fd = open(argv[optind], command == NAND_INFO ? O_RDONLY : O_RDWR);
 	if (fd < 0) {
 		perror("open");
 		return 1;
@@ -129,12 +133,18 @@ static int do_nand(int argc, char *argv[])
 
 	if (command == NAND_INFO) {
 		loff_t ofs;
-		int bad = 0;
+		int bad = 0, status;
 
 		printf("---- bad blocks ----\n");
 
-		for (ofs = 0; ofs < mtdinfo.size; ofs += mtdinfo.erasesize) {
-			if (ioctl(fd, MEMGETBADBLOCK, &ofs)) {
+		for (ofs = 0; (u64)ofs < mtdinfo.size; ofs += mtdinfo.erasesize) {
+			status = ioctl(fd, MEMGETBADBLOCK, &ofs);
+			if (status < 0) {
+				perror("MEMGETBADBLOCK");
+				ret = status;
+				goto out;
+			}
+			if (status > 0) {
 				printf("Block at 0x%08llx is bad\n", ofs);
 				bad = 1;
 			}

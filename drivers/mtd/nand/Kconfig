@@ -120,6 +120,14 @@ config NAND_S3C24XX
 	help
 	  Add support for processor's NAND device controller.
 
+config NAND_S5PV210
+	bool "Samsung S5PV210 NAND read-only driver"
+	depends on CPU_S5PV210
+	help
+	  Read-only support for the FriendlyARM Mini210s MLC NAND format,
+	  using the S5PV210 BCH16 engine and protecting against writes and
+	  erases while the existing on-flash format is being validated.
+
 config MTD_NAND_ECC_SW_HAMMING_SMC
 	bool "NAND ECC Smart Media byte order"
 	default n

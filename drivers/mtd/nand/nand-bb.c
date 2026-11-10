@@ -52,7 +52,10 @@ static ssize_t nand_bb_read(struct cdev *cdev, void *buf, size_t count,
 		if (max <= 0)
 			break;
 
-		if (mtd_block_isbad(bb->mtd, bb->offset)) {
+		ret = mtd_block_isbad(bb->mtd, bb->offset);
+		if (ret < 0)
+			return ret;
+		if (ret > 0) {
 			printf("skipping bad block at 0x%08llx\n", bb->offset);
 			bb->offset += bb->mtd->erasesize;
 			continue;
@@ -214,9 +217,17 @@ static int nand_bb_close(struct cdev *cdev)
 static int nand_bb_calc_size(struct nand_bb *bb)
 {
 	loff_t pos = 0;
+	int ret;
 
 	while (pos < bb->mtd->size) {
-		if (!mtd_block_isbad(bb->mtd, pos))
+		ret = mtd_block_isbad(bb->mtd, pos);
+		if (ret < 0) {
+			dev_err(&bb->mtd->dev,
+				"bad-block read failed at 0x%08llx: %d\n",
+				pos, ret);
+			return ret;
+		}
+		if (!ret)
 			bb->cdev.size += bb->mtd->erasesize;
 
 		pos += bb->mtd->erasesize;
@@ -229,6 +240,7 @@ static int nand_bb_lseek(struct cdev *cdev, loff_t offset)
 {
 	struct nand_bb *bb = cdev->priv;
 	loff_t raw_pos = 0;
+	int ret;
 
 	/* lseek only in readonly mode */
 	if (bb->flags & O_ACCMODE)
@@ -236,7 +248,10 @@ static int nand_bb_lseek(struct cdev *cdev, loff_t offset)
 	while (raw_pos < bb->mtd->size) {
 		off_t now = min_t(loff_t, offset, bb->mtd->erasesize);
 
-		if (mtd_block_isbad(bb->mtd, raw_pos)) {
+		ret = mtd_block_isbad(bb->mtd, raw_pos);
+		if (ret < 0)
+			return ret;
+		if (ret > 0) {
 			raw_pos += bb->mtd->erasesize;
 		} else {
 			offset -= now;
@@ -278,7 +293,9 @@ struct cdev *mtd_add_bb(struct mtd_info *mtd, const char *name)
 	else
 		bb->cdev.name = basprintf("%s.bb", mtd->cdev.name);
 
-	nand_bb_calc_size(bb);
+	ret = nand_bb_calc_size(bb);
+	if (ret)
+		goto err;
 	bb->cdev.ops = &nand_bb_ops;
 	bb->cdev.priv = bb;
 
@@ -291,6 +308,7 @@ struct cdev *mtd_add_bb(struct mtd_info *mtd, const char *name)
 	return &bb->cdev;
 
 err:
+	free(bb->cdev.name);
 	free(bb);
 	return ERR_PTR(ret);
 }
@@ -327,7 +345,7 @@ int dev_add_bb_dev(const char *path, const char *name)
 
 	cdev = mtd_add_bb(parent->mtd, name);
 
-	return PTR_ERR(cdev);
+	return PTR_ERR_OR_ZERO(cdev);
 }
 
 int dev_remove_bb_dev(const char *name)
